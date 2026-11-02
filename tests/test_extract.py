@@ -5643,6 +5643,101 @@ def test_extract_warns_sql_grammar_failed_to_load(tmp_path, capsys, monkeypatch)
     assert failed == {"schema.sql", "views.sql"}
 
 
+def test_extract_warns_when_terraform_grammar_missing(tmp_path, capsys, monkeypatch):
+    # #1745: .tf HAS a dispatch entry, so the #1689 warning can't fire, and
+    # extract_terraform returns an "error" result when tree-sitter-hcl is absent,
+    # so the #1666 warning skips it too. The files must not vanish silently.
+    # The grammar is a core dependency, so absence means a broken install: the
+    # warning must name the direct repair, not a [terraform] extra.
+    # The dev environment ships the grammar, so simulate genuine absence by
+    # failing the import AND blanking find_spec for this one module.
+    import importlib.util as _ilu
+    monkeypatch.setitem(sys.modules, "tree_sitter_hcl", None)  # import -> ImportError
+    _real_find_spec = _ilu.find_spec
+    monkeypatch.setattr(
+        _ilu, "find_spec",
+        lambda name, *a, **k: None if name == "tree_sitter_hcl" else _real_find_spec(name, *a, **k),
+    )
+    t1 = tmp_path / "main.tf"; t1.write_text('resource "aws_s3_bucket" "logs" {}\n')
+    py = tmp_path / "a.py"; py.write_text("def main():\n    return 1\n")
+
+    result = extract([t1, py], cache_root=tmp_path / "cache", parallel=False)
+    err = capsys.readouterr().err
+
+    assert "1 .tf file(s)" in err
+    assert "tree_sitter_hcl not installed" in err
+    assert "core dependency" in err, "message must say the install is broken, not point at an extra"
+    assert 'pip install "tree-sitter-hcl>=1.2.0,<2"' in err, (
+        "the direct repair must stay inside the supported grammar range"
+    )
+    assert "graphifyy[terraform]" not in err, ".tf must not be hinted as an optional extra any more"
+    assert "#1745" in err
+    # the Python file still extracts normally
+    labels = [n.get("label") for n in result["nodes"]]
+    assert any(str(l).startswith("main") for l in labels)
+    # #2543: failed terraform sources must be surfaced so the CLI can leave them
+    # unstamped in the incremental manifest.
+    failed = {Path(p).name for p in result.get("failed_sources", [])}
+    assert failed == {"main.tf"}
+
+
+def test_extract_terraform_reports_load_failure_not_missing(tmp_path, monkeypatch):
+    # #2602: an installed-but-broken grammar (e.g. a wheel built for a different
+    # Python ABI) raises ImportError at import time just like an absent one. The
+    # extractor must NOT claim "not installed" — that sends the user to a no-op
+    # `pip install` — but surface the real load exception instead.
+    import builtins
+    from graphify.extractors.terraform import extract_terraform
+    import tree_sitter_hcl  # noqa: F401 — core dependency; find_spec must see it as installed
+
+    _orig_import = builtins.__import__
+
+    def _broken_import(name, *args, **kwargs):
+        if name == "tree_sitter_hcl":
+            raise ImportError("dynamic module does not define module export function")
+        return _orig_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _broken_import)
+    tf = tmp_path / "main.tf"; tf.write_text('resource "aws_s3_bucket" "logs" {}\n')
+    err = extract_terraform(tf).get("error") or ""
+    assert "failed to load" in err
+    assert "dynamic module does not define module export function" in err
+    assert "pip install" not in err
+
+
+def test_extract_warns_terraform_grammar_failed_to_load(tmp_path, capsys, monkeypatch):
+    # #2602: the aggregated #1745 warning must surface a present-but-broken
+    # grammar with the real cause and WITHOUT a misleading install hint, so the
+    # files are neither silently dropped nor sent to a no-op fix.
+    import builtins
+    import tree_sitter_hcl  # noqa: F401 — core dependency; absence must FAIL, not skip
+
+    _orig_import = builtins.__import__
+
+    def _broken_import(name, *args, **kwargs):
+        if name == "tree_sitter_hcl":
+            raise ImportError("dynamic module does not define module export function")
+        return _orig_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _broken_import)
+    t1 = tmp_path / "main.tf"; t1.write_text('resource "aws_s3_bucket" "logs" {}\n')
+    t2 = tmp_path / "vars.tf"; t2.write_text('variable "region" {}\n')
+
+    result = extract([t1, t2], cache_root=tmp_path / "cache", parallel=False)
+    err = capsys.readouterr().err
+
+    assert "2 .tf file(s)" in err
+    assert "failed to load" in err
+    assert "dynamic module does not define module export function" in err
+    assert "#1745" in err
+    # the no-op fix must NOT be suggested for a present-but-broken grammar
+    assert "graphifyy[terraform]" not in err
+    assert "pip install" not in err
+    # #2543: still surfaced as failed so the incremental manifest retries them
+    failed = {Path(p).name for p in result.get("failed_sources", [])}
+    assert failed == {"main.tf", "vars.tf"}
+
+
 def test_extract_progress_final_line_uses_consistent_denominator(tmp_path, capsys):
     # #1693: intermediate progress lines count against uncached_work; the final
     # "100%" line must NOT switch to total_files (which includes cached hits and

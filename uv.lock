@@ -1540,7 +1540,7 @@ wheels = [
 
 [[package]]
 name = "graphifyy"
-version = "0.9.99"
+version = "0.9.100"
 source = { editable = "." }
 dependencies = [
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -1561,6 +1561,7 @@ dependencies = [
     { name = "tree-sitter-fortran" },
     { name = "tree-sitter-go" },
     { name = "tree-sitter-groovy" },
+    { name = "tree-sitter-hcl" },
     { name = "tree-sitter-java" },
     { name = "tree-sitter-javascript" },
     { name = "tree-sitter-json" },
@@ -1744,7 +1745,6 @@ dev = [
     { name = "setuptools" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "tree-sitter-commonlisp" },
-    { name = "tree-sitter-hcl" },
     { name = "tree-sitter-ocaml" },
     { name = "wheel" },
 ]
@@ -1825,8 +1825,9 @@ requires-dist = [
     { name = "tree-sitter-fortran", specifier = ">=0.6,<0.8" },
     { name = "tree-sitter-go", specifier = ">=0.23,<0.26" },
     { name = "tree-sitter-groovy", specifier = ">=0.1,<0.3" },
-    { name = "tree-sitter-hcl", marker = "extra == 'all'" },
-    { name = "tree-sitter-hcl", marker = "extra == 'terraform'" },
+    { name = "tree-sitter-hcl", specifier = ">=1.2.0,<2" },
+    { name = "tree-sitter-hcl", marker = "extra == 'all'", specifier = ">=1.2.0,<2" },
+    { name = "tree-sitter-hcl", marker = "extra == 'terraform'", specifier = ">=1.2.0,<2" },
     { name = "tree-sitter-java", specifier = ">=0.23,<0.25" },
     { name = "tree-sitter-javascript", specifier = ">=0.23,<0.26" },
     { name = "tree-sitter-json", specifier = ">=0.23,<0.26" },
@@ -1881,7 +1882,6 @@ dev = [
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0" },
     { name = "tree-sitter-commonlisp", specifier = ">=0.4.1" },
-    { name = "tree-sitter-hcl", specifier = ">=1.2.0" },
     { name = "tree-sitter-ocaml", specifier = ">=0.25.0" },
     { name = "wheel", specifier = ">=0.47.0" },
 ]

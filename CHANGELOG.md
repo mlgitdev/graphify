@@ -8,6 +8,7 @@ Full release notes with details on each version: [GitHub Releases](https://githu
 - Fix: **python** imports resolve across PEP 420 namespace packages split over multiple `src/` roots (no `__init__.py`), while a module ambiguously provided by two roots stays unresolved and loose/stdlib-named modules are left alone (#4929, thanks @nothariharan).
 - Fix: **go** a method value reached through a receiver field (`m.UseMiddleware(hs.handler.Middleware)`) is linked as an `indirect_call`, extending the method-value-as-argument handling to field chains rooted at the method's own receiver (#1566, #4931, thanks @nothariharan).
 - Fix: **go** a package-level `var` initialiser references the types it names (`var s = wire.NewSet(new(T), ...)`, composite literals, `new(T)`), the type-reference complement to crediting its calls to the file, so a wire-set file no longer extracts as no symbols (#2360, #4932, thanks @nothariharan).
+- Feat: **terraform** `tree-sitter-hcl` is now a core dependency, so `.tf`/`.hcl` files are extracted on a default install instead of contributing nothing until `graphifyy[terraform]` is added; the extra stays as a no-op alias and `*.tf.json` still routes to the JSON extractor (#187, #1745). A project is re-extracted once after upgrading on installs that did not already have the grammar.
 
 ## 0.9.100 (2026-11-01)
 

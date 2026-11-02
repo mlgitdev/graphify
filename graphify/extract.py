@@ -9257,9 +9257,10 @@ _EXTRA_FOR_EXTENSION = {
     ".hrl": "erlang",
     ".escript": "erlang",
     ".sql": "sql",
-    ".tf": "terraform",
-    ".tfvars": "terraform",
-    ".hcl": "terraform",
+    # .tf/.tfvars/.hcl are deliberately absent: tree-sitter-hcl is a core
+    # dependency, so a missing grammar means a broken install, not a missing
+    # extra — the extractor's own error names the direct pip install that
+    # repairs it.
     ".dm": "dm",
     ".dme": "dm",
     ".ml": "ocaml",

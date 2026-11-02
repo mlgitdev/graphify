@@ -196,8 +196,20 @@ def extract_terraform(path: Path) -> dict:
     try:
         import tree_sitter_hcl as tshcl
         from tree_sitter import Language, Parser
-    except ImportError:
-        return {"nodes": [], "edges": [], "error": "tree_sitter_hcl not installed. Run: pip install tree-sitter-hcl"}
+    except ImportError as e:
+        import importlib.util
+        # An installed-but-broken grammar (e.g. a C extension built for a
+        # different Python ABI, #2602) raises ImportError here too. Reporting
+        # that as "not installed" sends the user to a no-op `pip install`, so
+        # distinguish a genuinely-absent module from one that failed to load
+        # and surface the real exception in the latter case.
+        if importlib.util.find_spec("tree_sitter_hcl") is None:
+            return {"nodes": [], "edges": [],
+                    "error": ("tree_sitter_hcl not installed. It is a core dependency, "
+                              "so this install is incomplete. Reinstall graphifyy, "
+                              "or run: pip install \"tree-sitter-hcl>=1.2.0,<2\"")}
+        return {"nodes": [], "edges": [],
+                "error": f"tree_sitter_hcl is installed but failed to load: {e}"}
 
     try:
         language = Language(tshcl.language())
